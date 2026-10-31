@@ -1,12 +1,12 @@
 const { body, validationResult } = require("express-validator");
 
-const respondWithValidationErrors= (req, res, next) =>{
-    const errors =validationResult(req);
-    if(!errors.isEmpty()){
-        return res.status(400).json({errors:errors.array()});
-    }
-    next();
-}
+const respondWithValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
 const registerUserValidations = [
   body("username")
     .isString()
@@ -31,6 +31,37 @@ const registerUserValidations = [
   respondWithValidationErrors,
 ];
 
+const loginUserValidations = [
+  body().custom((_, { req }) => {
+    const email = req.body.email?.trim();
+    const username = req.body.username?.trim();
+
+    if (!email && !username) {
+      throw new Error("Email or username is required");
+    }
+
+    if (email && username) {
+      throw new Error("Provide either email or username, not both");
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Invalid email address");
+    }
+
+    return true;
+  }),
+
+  body("password")
+    .notEmpty()
+    .withMessage("Password is required")
+    .bail()
+    .isString()
+    .withMessage("Password must be a string"),
+
+  respondWithValidationErrors,
+];
+
 module.exports = {
-    registerUserValidations
-}
+  registerUserValidations,
+  loginUserValidations,
+};
