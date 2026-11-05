@@ -1,6 +1,7 @@
 const userModel = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const redis = require("../db/redis");
 
 async function registerUser(req, res) {
   try {
@@ -118,6 +119,22 @@ async function loginUser(req, res) {
   }
 }
 const logoutUser = async (req, res) => {
+  const token = req.cookies?.token;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+
+      if (ttl > 0) {
+        // key tab tak rahegi jab tak token khud expire na ho jaye
+        await redis.set(`bl:${token}`, "1", { EX: ttl });
+      }
+    } catch {
+      // invalid/expired token: blacklist ki zarurat nahi
+    }
+  }
+
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -130,9 +147,7 @@ const logoutUser = async (req, res) => {
 };
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await userModel
-      .findById(req.user.id)
-      .select("-password");
+    const user = await userModel.findById(req.user.id).select("-password");
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });

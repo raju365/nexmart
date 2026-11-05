@@ -2,6 +2,11 @@ const bcrypt = require("bcryptjs");
 const request = require("supertest");
 const { connect, disconnect } = require("./setup/db");
 
+jest.mock("../src/db/redis", () => ({
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue("OK"),
+}));
+
 process.env.JWT_SECRET = "test-secret-key";
 
 const app = require("../src/app");
