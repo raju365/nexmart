@@ -1,8 +1,6 @@
-const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const request = require("supertest");
-const { MongoMemoryServer } = require("mongodb-memory-server");
-const os = require("os");
+const { connect, disconnect } = require("./setup/db");
 
 process.env.JWT_SECRET = "test-secret-key";
 
@@ -10,8 +8,6 @@ const app = require("../src/app");
 const userModel = require("../src/models/user.model");
 
 jest.setTimeout(60000);
-
-let mongoServer;
 
 const registration = {
   username: "test-user",
@@ -33,14 +29,7 @@ async function createTestUser() {
 }
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create({
-    binary: { version: "8.2.6" },
-  });
-
-  await mongoose.connect(mongoServer.getUri(), {
-    runtimeAdapters: { os },
-  });
-
+  await connect();
   await userModel.init();
 });
 
@@ -48,13 +37,7 @@ beforeEach(async () => {
   await userModel.deleteMany({});
 });
 
-afterAll(async () => {
-  await mongoose.disconnect();
-
-  if (mongoServer) {
-    await mongoServer.stop();
-  }
-});
+afterAll(disconnect);
 
 describe("POST /api/auth/login", () => {
   it("logs in with valid credentials and does not return password", async () => {

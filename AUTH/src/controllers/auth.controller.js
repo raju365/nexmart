@@ -128,4 +128,19 @@ const logoutUser = async (req, res) => {
     message: "Logged out successfully",
   });
 };
-module.exports = { registerUser, loginUser, logoutUser };
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await userModel
+      .findById(req.user.id)
+      .select("-password");
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+module.exports = { registerUser, loginUser, logoutUser, getCurrentUser };
