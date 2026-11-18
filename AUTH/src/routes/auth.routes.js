@@ -38,5 +38,11 @@ router.delete(
   validateAddressId,
   addressController.deleteAddress,
 );
+router.patch(
+  "/users/me/addresses/:addressId/default",
+  authMiddleware,
+  validateAddressId,
+  addressController.setDefaultAddress,
+);
 
 module.exports = router;

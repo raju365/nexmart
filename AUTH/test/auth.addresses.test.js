@@ -272,3 +272,81 @@ describe("DELETE /api/auth/users/me/addresses/:addressId", () => {
     expect(res.status).toBe(401);
   });
 });
+describe("PATCH /api/auth/users/me/addresses/:addressId/default", () => {
+  it("makes the chosen address the only default", async () => {
+    await request(app).post(BASE).set("Cookie", cookie).send(validAddress);
+    const second = await request(app)
+      .post(BASE)
+      .set("Cookie", cookie)
+      .send({ ...validAddress, line1: "Second address" });
+
+    const res = await request(app)
+      .patch(`${BASE}/${second.body.address._id}/default`)
+      .set("Cookie", cookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Default address updated");
+    expect(res.body.address.isDefault).toBe(true);
+
+    const user = await userModel.findOne({ email: "test@example.com" });
+    const defaults = user.addresses.filter((a) => a.isDefault);
+
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0].line1).toBe("Second address");
+  });
+
+  it("keeps a single default when called on the current default", async () => {
+    const first = await request(app)
+      .post(BASE)
+      .set("Cookie", cookie)
+      .send(validAddress);
+
+    const res = await request(app)
+      .patch(`${BASE}/${first.body.address._id}/default`)
+      .set("Cookie", cookie);
+
+    expect(res.status).toBe(200);
+
+    const user = await userModel.findOne({ email: "test@example.com" });
+    expect(user.addresses.filter((a) => a.isDefault)).toHaveLength(1);
+  });
+
+  it("returns 404 for an address that does not exist", async () => {
+    const res = await request(app)
+      .patch(`${BASE}/64b7f0c2a1b2c3d4e5f60718/default`)
+      .set("Cookie", cookie);
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toBe("Address not found");
+  });
+
+  it("returns 400 for an invalid address id", async () => {
+    const res = await request(app)
+      .patch(`${BASE}/not-a-valid-id/default`)
+      .set("Cookie", cookie);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("cannot change another user's default address", async () => {
+    const created = await request(app)
+      .post(BASE)
+      .set("Cookie", cookie)
+      .send(validAddress);
+
+    const otherCookie = await loginAs("other-user", "other@example.com");
+    const res = await request(app)
+      .patch(`${BASE}/${created.body.address._id}/default`)
+      .set("Cookie", otherCookie);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects an unauthenticated request", async () => {
+    const res = await request(app).patch(
+      `${BASE}/64b7f0c2a1b2c3d4e5f60718/default`,
+    );
+
+    expect(res.status).toBe(401);
+  });
+});

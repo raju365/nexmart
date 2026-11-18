@@ -90,5 +90,31 @@ const deleteAddress = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+const setDefaultAddress = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user.id).select("addresses");
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
 
-module.exports = { getAddresses, addAddress, deleteAddress };
+    const address = user.addresses.id(req.params.addressId);
+    if (!address) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    user.addresses.forEach((a) => {
+      a.isDefault = a._id.equals(address._id);
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Default address updated",
+      address,
+    });
+  } catch (err) {
+    console.error("Error in setDefaultAddress:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+module.exports = { getAddresses, addAddress, deleteAddress, setDefaultAddress };
