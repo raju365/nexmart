@@ -1,11 +1,16 @@
 const mongoose = require("mongoose");
+
 const addressSchema = new mongoose.Schema({
-  Street: String,
-  city: String,
-  state: String,
-  zip: String,
-  country: String,
+  name: { type: String, required: true, trim: true },
+  phone: { type: String, required: true },
+  line1: { type: String, required: true, trim: true },
+  line2: { type: String, trim: true, default: "" },
+  city: { type: String, required: true, trim: true },
+  state: { type: String, required: true, trim: true },
+  pincode: { type: String, required: true },
+  isDefault: { type: Boolean, default: false },
 });
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -20,7 +25,6 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     select: false,
-    
   },
   fullName: {
     firstName: { type: String, required: true },
@@ -31,8 +35,8 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "seller"],
     default: "user",
   },
-  addresses: [addressSchema],
+  addresses: { type: [addressSchema], default: [] },
 });
 
-const userModel = mongoose.model('user',userSchema)
+const userModel = mongoose.model("user", userSchema);
 module.exports = userModel;

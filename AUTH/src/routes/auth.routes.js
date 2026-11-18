@@ -3,6 +3,12 @@ const validators = require("../middlewares/validator.middleware");
 const router = express.Router();
 const authController = require("../controllers/auth.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
+const addressController = require("../controllers/address.controller");
+const {
+  validateAddAddress,
+  validateAddressId,
+} = require("../validators/address.validator");
+
 
 router.post(
   "/register",
@@ -16,4 +22,21 @@ router.post(
 );
 router.get("/me", authMiddleware, authController.getCurrentUser);
 router.post("/logout", authController.logoutUser);
+
+router.get("/users/me/addresses", authMiddleware, addressController.getAddresses);
+
+router.post(
+  "/users/me/addresses",
+  authMiddleware,
+  validateAddAddress,
+  addressController.addAddress,
+);
+
+router.delete(
+  "/users/me/addresses/:addressId",
+  authMiddleware,
+  validateAddressId,
+  addressController.deleteAddress,
+);
+
 module.exports = router;
