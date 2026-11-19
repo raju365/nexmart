@@ -8,7 +8,7 @@ const {
   validateAddAddress,
   validateAddressId,
 } = require("../validators/address.validator");
-
+const loginRateLimiter = require("../middlewares/loginRateLimiter.middleware");
 
 router.post(
   "/register",
@@ -18,6 +18,7 @@ router.post(
 router.post(
   "/login",
   validators.loginUserValidations,
+   loginRateLimiter,
   authController.loginUser,
 );
 router.get("/me", authMiddleware, authController.getCurrentUser);

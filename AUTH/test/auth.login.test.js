@@ -1,11 +1,8 @@
 const bcrypt = require("bcryptjs");
 const request = require("supertest");
 const { connect, disconnect } = require("./setup/db");
-
-jest.mock("../src/db/redis", () => ({
-  get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue("OK"),
-}));
+const redis = require("../src/db/redis");
+jest.mock("../src/db/redis", () => require("./setup/redisMock"));
 
 process.env.JWT_SECRET = "test-secret-key";
 
@@ -40,6 +37,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await userModel.deleteMany({});
+  redis.__reset();
 });
 
 afterAll(disconnect);
@@ -107,5 +105,64 @@ describe("POST /api/auth/login", () => {
         }),
       ]),
     );
+  });
+});
+describe("POST /api/auth/login rate limiting", () => {
+  const wrongLogin = (email = registration.email) =>
+    request(app)
+      .post("/api/auth/login")
+      .send({ email, password: "wrong-password" });
+
+  it("blocks login after 5 failed attempts", async () => {
+    await createTestUser();
+
+    for (let i = 0; i < 5; i++) {
+      const res = await wrongLogin();
+      expect(res.status).toBe(401);
+    }
+
+    const blocked = await wrongLogin();
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+  });
+
+  it("blocks even the correct password while locked", async () => {
+    await createTestUser();
+
+    for (let i = 0; i < 5; i++) await wrongLogin();
+
+    const res = await request(app).post("/api/auth/login").send({
+      email: registration.email,
+      password: registration.password,
+    });
+
+    expect(res.status).toBe(429);
+  });
+
+  it("resets the counter after a successful login", async () => {
+    await createTestUser();
+
+    for (let i = 0; i < 3; i++) await wrongLogin();
+
+    const ok = await request(app).post("/api/auth/login").send({
+      email: registration.email,
+      password: registration.password,
+    });
+    expect(ok.status).toBe(200);
+
+    // reset na hota to 3 + 4 = 7 attempts me 429 aata
+    for (let i = 0; i < 4; i++) {
+      const res = await wrongLogin();
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it("does not affect a different account", async () => {
+    await createTestUser();
+
+    for (let i = 0; i < 5; i++) await wrongLogin();
+
+    const res = await wrongLogin("someone-else@example.com");
+    expect(res.status).toBe(401);
   });
 });
